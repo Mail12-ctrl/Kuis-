@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Kuis Final</title>
+
+<style>
+body {
+  margin:0;
+  font-family: Arial;
+  background: linear-gradient(-45deg,#1e3c72,#2a5298,#6a11cb,#2575fc);
+  background-size: 400% 400%;
+  animation: bg 8s infinite alternate;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  color:white;
+}
+
+@keyframes bg {
+  0% {background-position:0% 50%;}
+  100% {background-position:100% 50%;}
+}
+
+.box {
+  width:90%;
+  max-width:360px;
+  background: rgba(0,0,0,0.6);
+  padding:20px;
+  border-radius:20px;
+  text-align:center;
+  backdrop-filter: blur(10px);
+  animation: masuk 0.7s;
+}
+
+@keyframes masuk {
+  from {opacity:0; transform:translateY(30px);}
+  to {opacity:1; transform:translateY(0);}
+}
+
+button {
+  width:100%;
+  padding:12px;
+  margin:8px 0;
+  border:none;
+  border-radius:12px;
+  background: linear-gradient(45deg,#00f2fe,#4facfe);
+  color:black;
+  font-weight:bold;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow:0 0 15px #00f2fe;
+}
+
+.timer {color:#ff4d4d; font-weight:bold;}
+.hidden {display:none;}
+
+.fade {animation:fade 0.5s;}
+@keyframes fade {from{opacity:0;} to{opacity:1;}}
+</style>
+
+</head>
+
+<body>
+
+<div class="box">
+
+<!-- MENU -->
+<div id="menu">
+  <h2>🎮 GAME KUIS</h2>
+  <button onclick="start('mtk')">📊 Matematika</button>
+  <button onclick="start('indo')">📖 Bahasa Indonesia</button>
+  <button onclick="start('dunia')">🌍 Pengetahuan Dunia</button>
+</div>
+
+<!-- GAME -->
+<div id="game" class="hidden">
+  <h3 id="level"></h3>
+  <div class="timer" id="timer"></div>
+  <h2 id="soal"></h2>
+  <div id="pilihan"></div>
+  <p id="highscore"></p>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameover" class="hidden">
+  <h2>💀 GAME OVER</h2>
+  <p id="hasil"></p>
+  <button onclick="ulang()">🔁 Ulangi</button>
+  <button onclick="menu()">🏠 Menu</button>
+</div>
+
+</div>
+
+<script>
+
+let kategori="", level=1, waktu=10, interval, current;
+
+// START
+function start(kat){
+  kategori=kat;
+  level=1;
+
+  let hs=localStorage.getItem("hs_"+kategori)||0;
+  document.getElementById("highscore").innerText="High Score: "+hs;
+
+  transisi("menu","game");
+  tampilSoal();
+}
+
+// TRANSISI
+function transisi(a,b){
+  document.getElementById(a).classList.add("hidden");
+  let el=document.getElementById(b);
+  el.classList.remove("hidden");
+  el.classList.add("fade");
+}
+
+// GENERATE SOAL
+function generate(){
+
+  // MTK (semakin sulit)
+  if(kategori=="mtk"){
+    let a=Math.floor(Math.random()*level);
+    let b=Math.floor(Math.random()*10);
+    let benar=a+b;
+    let opsi=[benar,benar+1,benar-1,benar+2].sort(()=>Math.random()-0.5);
+    return {soal:`${a}+${b}=?`,opsi,benar:opsi.indexOf(benar)};
+  }
+
+  // INDONESIA
+  if(kategori=="indo"){
+    let data=[
+      {t:"Sinonim 'indah'",o:["jelek","cantik","buruk","kecil"],b:1},
+      {t:"Antonim 'cepat'",o:["lambat","besar","tinggi","keras"],b:0},
+      {t:"Kata baku 'aktifitas'?",o:["aktivitas","aktifitas","aktipitas","aktifitas"],b:0}
+    ];
+    return data[Math.floor(Math.random()*data.length)];
+  }
+
+  // DUNIA
+  if(kategori=="dunia"){
+    let negara=["Indonesia","Jepang","Mesir","Italia"];
+    let ibu=["Jakarta","Tokyo","Kairo","Roma"];
+    let i=Math.floor(Math.random()*negara.length);
+    let opsi=[...ibu].sort(()=>Math.random()-0.5);
+    return {soal:`Ibukota ${negara[i]}?`,opsi,benar:opsi.indexOf(ibu[i])};
+  }
+}
+
+// TAMPIL
+function tampilSoal(){
+  if(level>200) return menang();
+
+  current=generate();
+
+  document.getElementById("level").innerText="Level "+level;
+  document.getElementById("soal").innerText=current.soal;
+
+  let html="";
+  current.opsi.forEach((o,i)=>{
+    html+=`<button onclick="cek(${i})">${o}</button>`;
+  });
+
+  document.getElementById("pilihan").innerHTML=html;
+
+  timer();
+}
+
+// TIMER
+function timer(){
+  waktu=10;
+  document.getElementById("timer").innerText=waktu;
+
+  interval=setInterval(()=>{
+    waktu--;
+    document.getElementById("timer").innerText=waktu;
+
+    if(waktu==0){
+      kalah();
+    }
+  },1000);
+}
+
+// CEK
+function cek(j){
+  clearInterval(interval);
+
+  if(j!=current.benar){
+    kalah();
+  } else {
+    level++;
+    tampilSoal();
+  }
+}
+
+// KALAH
+function kalah(){
+  clearInterval(interval);
+
+  let key="hs_"+kategori;
+  let hs=localStorage.getItem(key)||0;
+
+  if(level>hs){
+    localStorage.setItem(key,level);
+  }
+
+  transisi("game","gameover");
+
+  document.getElementById("hasil").innerText=
+    "Level terakhir: "+level;
+}
+
+// MENANG
+function menang(){
+  document.getElementById("soal").innerText="🎉 TAMAT 200 LEVEL!";
+  document.getElementById("pilihan").innerHTML="";
+}
+
+// ULANG
+function ulang(){
+  location.reload();
+}
+
+// MENU
+function menu(){
+  location.reload();
+}
+
+</script>
+
+</body>
+</html>
